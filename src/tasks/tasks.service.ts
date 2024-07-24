@@ -9,18 +9,27 @@ import { TasksRepository } from './tasks.repository';
 @Injectable()
 export class TasksService {
   constructor(
-    @InjectRepository(Task)
+    @InjectRepository(TasksRepository)
     private tasksRepository: TasksRepository,
   ) {}
 
   async getTasks(filterDto: GetTasksFilterDto): Promise<Task[]> {
-    const tasks = await this.tasksRepository.find({
-      where: {
-        status: filterDto.status,
-        description: filterDto.search,
-      },
-    });
+    const { status, search } = filterDto;
 
+    const query = this.tasksRepository.createQueryBuilder('task');
+
+    if (status) {
+      query.andWhere('task.status = :status', { status });
+    }
+
+    if (search) {
+      query.andWhere(
+        'LOWER(task.title) LIKE LOWER(:search) OR LOWER(task.description) LIKE LOWER(:search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const tasks = await query.getMany();
     return tasks;
   }
 
